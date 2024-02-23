@@ -1,10 +1,67 @@
-import { StyleSheet, SafeAreaView, Text, View, Dimensions, Image, StatusBar, TextInput, TouchableOpacity, KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard, Platform } from 'react-native'
-import React from 'react'
-import { PRIMARY, SECONDARY, SUPPORTING } from '../colors'
+import React, { useState } from 'react';
+import { StyleSheet, SafeAreaView, Text, View, Dimensions, Image, StatusBar, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { PRIMARY, SECONDARY, SUPPORTING } from '../colors';
+import { getAuth, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { Database, getDatabase, ref, set } from 'firebase/database';
+import app from '../config'
+
 const width = Dimensions.get('window').width;
 const height = Dimensions.get('window').height;
 
 const SignUp = ({ navigation }) => {
+    const [name, setName] = useState('');
+    const [email, setEmail] = useState('');
+    const [phone, setPhone] = useState('');
+    const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const database = getDatabase();
+    const auth = getAuth()
+    const handleCreateAccount = () => 
+    {
+        if (!name.trim() || !email.trim() || !phone.trim() || !password.trim() || !confirmPassword.trim())
+        {
+            Alert.alert('All fields are mandatory');
+        } 
+        else if(password != confirmPassword)
+        {
+            Alert.alert('Passwords do not match');
+        }
+        else
+        {
+            
+            
+            createUserWithEmailAndPassword(auth, email, password)
+            .then((userCredentials)=>{
+                const user = userCredentials;
+                const userData = {
+                    name,
+                    email,
+                    phone,
+                    userId : user.user.uid,
+                };
+                set(ref(database, `users/${userCredentials.user.uid}`), userData)
+                .then(()=>{
+                    console.log('User Account Created'),
+                    updateProfile(
+                        auth.currentUser,
+                        {
+                            displayName:name
+                        }
+                    )
+                    navigation.navigate('Navigator')
+                }).catch((error)=>{
+                    console.log('Error Saving user Data: ', error)
+                });
+            }).catch((error)=>{
+                console.log('Error Creating User:', error);
+                Alert.alert('Something went wrong, please try again later')
+            })
+            console.log('OK');
+        }
+    };
+
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: PRIMARY }}>
             <StatusBar barStyle='light-content' />
@@ -16,30 +73,70 @@ const SignUp = ({ navigation }) => {
                     <Text style={styles.text}>
                         Create new accounts
                     </Text>
-                    <Image source={require('../assets/icon.png')} style={{ height: 100, width: 100, borderRadius: 15, marginTop: 50 }} />
-                    <Text style={{ fontWeight: 'bold', marginTop: 30, fontSize: 18 }}>
+                    <Image source={require('../assets/icon.png')} style={{ height: 100, width: 100, borderRadius: 15, marginTop: 10 }} />
+                    <Text style={{ fontWeight: 'bold', marginTop: 10, fontSize: 18 }}>
                         Enter account details
                     </Text>
                     <View style={styles.textInput}>
                         <Image source={require('../assets/name.png')} style={{ height: 25, width: 25 }} />
-                        <TextInput placeholder='Enter Your Name' style={{ flex: 1, marginLeft: 20 }} />
+                        <TextInput
+                            placeholder='Enter Your Name'
+                            style={{ flex: 1, marginLeft: 20 }}
+                            value={name}
+                            onChangeText={setName}
+                        />
                     </View>
                     <View style={styles.textInput}>
                         <Image source={require('../assets/mail.png')} style={{ height: 25, width: 25 }} />
-                        <TextInput placeholder='Enter Your Email Here' style={{ flex: 1, marginLeft: 20 }} />
+                        <TextInput
+                            placeholder='Enter Your Email Here'
+                            style={{ flex: 1, marginLeft: 20 }}
+                            value={email}
+                            onChangeText={setEmail}
+                            autoCapitalize='none'
+                        />
+                    </View>
+                    <View style={styles.textInput}>
+                        <Image source={require('../assets/phone.png')} style={{ height: 25, width: 25 }} />
+                        <TextInput
+                            placeholder='Enter Your Phone Here'
+                            style={{ flex: 1, marginLeft: 20 }}
+                            value={phone}
+                            onChangeText={setPhone}
+                        />
                     </View>
                     <View style={styles.textInput}>
                         <Image source={require('../assets/pass.png')} style={{ height: 25, width: 25 }} />
-                        <TextInput placeholder='Enter Password' style={{ flex: 1, marginLeft: 20 }} secureTextEntry />
-                        <Image source={require('../assets/eye.png')} style={{ height: 25, width: 25, marginRight: 5 }} />
+                        <TextInput
+                            placeholder='Enter Password'
+                            style={{ flex: 1, marginLeft: 20 }}
+                            value={password}
+                            onChangeText={setPassword}
+                            secureTextEntry={!showPassword}
+                        />
+                        <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                            <Image source={showPassword ? require('../assets/invisible.png') : require('../assets/eye.png')} style={{ height: 25, width: 25, marginRight: 5 }} />
+                        </TouchableOpacity>
                     </View>
-                    <KeyboardAvoidingView style={styles.textInput} behavior={Platform.OS === 'ios' ? 'padding':'height'}>
+                    <View style={styles.textInput}>
                         <Image source={require('../assets/pass.png')} style={{ height: 25, width: 25 }} />
-                        <TextInput placeholder='Repeat Password' style={{ flex: 1, marginLeft: 20 }} secureTextEntry/>
-                        <Image source={require('../assets/eye.png')} style={{ height: 25, width: 25, marginRight: 5 }} />
-                    </KeyboardAvoidingView>
-                    <TouchableOpacity style={{ backgroundColor: PRIMARY, width: width * 0.9, height: 50, borderRadius: 7, justifyContent: 'center', alignItems: 'center', marginTop: 50, }} >
-                        <Text style={{ color: SECONDARY, fontSize: 18, }}>
+                        <TextInput
+                            placeholder='Confirm Password'
+                            style={{ flex: 1, marginLeft: 20 }}
+                            value={confirmPassword}
+                            onChangeText={setConfirmPassword}
+                            secureTextEntry={!showConfirmPassword}
+                            spellCheck={false}
+                        />
+                        <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
+                            <Image source={showConfirmPassword ? require('../assets/invisible.png') : require('../assets/eye.png')} style={{ height: 25, width: 25, marginRight: 5 }} />
+                        </TouchableOpacity>
+                    </View>
+                    <TouchableOpacity
+                        style={styles.createAccountButton}
+                        onPress={handleCreateAccount}
+                    >
+                        <Text style={styles.buttonText}>
                             Create Account
                         </Text>
                     </TouchableOpacity>
@@ -49,7 +146,7 @@ const SignUp = ({ navigation }) => {
     )
 }
 
-export default SignUp
+export default SignUp;
 
 const styles = StyleSheet.create({
     container: {
@@ -71,5 +168,18 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         marginTop: 10
+    },
+    createAccountButton: {
+        backgroundColor: PRIMARY,
+        width: width * 0.9,
+        height: 50,
+        borderRadius: 7,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: 50,
+    },
+    buttonText: {
+        color: SECONDARY,
+        fontSize: 18,
     }
-})
+});

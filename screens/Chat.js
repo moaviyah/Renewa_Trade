@@ -1,49 +1,78 @@
-import React from 'react';
-import { StyleSheet, Text, View, StatusBar, SafeAreaView, Image, FlatList, TouchableOpacity } from 'react-native';
-import { PRIMARY, SECONDARY } from '../colors';
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, Text, View, FlatList, TouchableOpacity, SafeAreaView, Image } from 'react-native';
+import { getDatabase, ref, onValue } from 'firebase/database';
+import { getAuth } from 'firebase/auth';
 
-const data = [
-  {
-    id: '1',
-    profileImage: require('../assets/user.png'),
-    name: 'John Doe',
-    lastText: 'Hello, Is is still available?',
-  },
-  {
-    id: '2',
-    profileImage: require('../assets/user.png'),
-    name: 'Jane Smith',
-    lastText: 'Sure, I can meet you there!',
-  },
-  // Add more data items as needed
-];
+const Chat = ({navigation}) => {
+  const [chats, setChats] = useState([]);
+  const auth = getAuth()
+  const currentUserId = auth.currentUser.uid; // Replace with actual current user ID
 
-const Chat = () => {
+  useEffect(() => {
+    const fetchChats = async () => {
+      try {
+        const db = getDatabase();
+        const messagesRef = ref(db, `messages/${currentUserId}`);
+    
+        onValue(messagesRef, (snapshot) => {
+          const data = snapshot.val();
+          console.log('chat data', data)
+          if (data) {
+            const userChats = [];
+            Object.entries(data).forEach(([uid, messages]) => {
+              const lastMessageKey = Object.keys(messages).pop();
+              const lastMessage = messages[lastMessageKey];
+    
+              // Fetch user information for otherUserId
+              const userRef = ref(db, `users/${uid}`);
+              onValue(userRef, (userSnapshot) => {
+                const userData = userSnapshot.val();
+                if (userData) {
+                  const profileImage = userData.profileImage;
+                  const userName = userData.name
+                  // Add chat item with user information
+                  userChats.push({
+                    uid,
+                    userName,
+                    lastMessage: lastMessage.message,
+                    timestamp: lastMessage.timestamp,
+                    profileImage: profileImage ? profileImage : null, // Assuming profileImage is stored in userData
+                  });
+    
+                  // Update state
+                  setChats(userChats);
+                }
+              });
+            });
+          }
+        });
+      } catch (error) {
+        console.error('Error fetching chats:', error);
+      }
+    };
+
+    fetchChats();
+  }, []);
+
   const renderChatItem = ({ item }) => (
-    <TouchableOpacity style={styles.chatItem}>
-      <Image source={item.profileImage} style={styles.profileImage} />
-      <View style={styles.chatDetails}>
-        <Text style={styles.name}>{item.name}</Text>
-        <Text style={styles.lastText}>{item.lastText}</Text>
+    <TouchableOpacity style={styles.chatItem} onPress={()=>navigation.navigate('Messages', {item})}>
+      <Image source={item.profileImage ? { uri: item.profileImage } : require('../assets/profile.png')} style={styles.profileImage}/>
+      <View style={styles.userInfo}>
+        <Text style={styles.otherUserId}>{item.userName}</Text>
+        <Text style={styles.lastMessage}>{item.lastMessage}</Text>
       </View>
     </TouchableOpacity>
   );
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: PRIMARY }}>
-      <StatusBar barStyle='light-content' />
-      <View style={styles.container}>
-      <View style={{borderBottomWidth:1}}>
-      <Text style={{fontSize:18, margin:20, fontWeight:'700', borderBottomWidth:1}}>All Messages</Text>
-      </View>
-        <FlatList
-          data={data}
-          keyExtractor={(item) => item.id}
-          renderItem={renderChatItem}
-          style={{}}
-        />
-      </View>
-    </SafeAreaView>
+    <View style={styles.container} >
+      <Text style={{ fontWeight: 'bold', fontSize: 18 }}> All Chats</Text>
+      <FlatList
+        data={chats}
+        renderItem={renderChatItem}
+        keyExtractor={(item) => item.otherUserId}
+      />
+    </View>
   );
 };
 
@@ -52,14 +81,20 @@ export default Chat;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: SECONDARY,
+    backgroundColor: '#fff',
+    paddingVertical: 20,
+    paddingHorizontal:10
   },
   chatItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection:'row',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: PRIMARY,
+    borderBottomColor: '#ccc',
+    alignItems:'center'
+  },
+  userInfo: {
+   
+    flex:1
   },
   profileImage: {
     width: 50,
@@ -67,15 +102,12 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     marginRight: 16,
   },
-  chatDetails: {
-    flex: 1,
-  },
-  name: {
+  otherUserId: {
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 4,
   },
-  lastText: {
+  lastMessage: {
     fontSize: 16,
   },
 });

@@ -1,70 +1,142 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, StatusBar, SafeAreaView, Image, TouchableOpacity, TextInput, Button, Dimensions, KeyboardAvoidingView, Platform } from 'react-native';
+import { StyleSheet, Text, View, StatusBar,Alert, SafeAreaView, Image, TouchableOpacity, TextInput, Button, Dimensions, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { PRIMARY, SECONDARY } from '../colors';
+import * as ImagePicker from 'expo-image-picker';
+import { getDatabase, ref, push, set } from 'firebase/database';
+import {getAuth} from 'firebase/auth'
 const width = Dimensions.get('window').width;
 const height = Dimensions.get('window').height;
+
+const ImageSlot = ({ index, onImageSelect, image }) => {
+  return (
+    <TouchableOpacity style={styles.imageSlot} onPress={() => onImageSelect(index)}>
+      {image ? <Image source={{ uri: image }} style={styles.uploadedImage} /> : <Image source={require('../assets/upload.png')} style={{ height: 25, width: 25 }} />}
+    </TouchableOpacity>
+  );
+};
 
 const Sell = () => {
   const [productName, setProductName] = useState('');
   const [productPrice, setProductPrice] = useState('');
   const [productDescription, setProductDescription] = useState('');
   const [sellerLocation, setSellerLocation] = useState('');
-  const [uploadedImage, setUploadedImage] = useState(null);
+  const [images, setImages] = useState(Array(9).fill(null));
 
-  const handleImageUpload = () => {
-    // Implement your image upload logic here
-    // For simplicity, this example uses a placeholder image
-    setUploadedImage(require('../assets/user.png'));
+  const handleImageSelect = async (index) => {
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (permissionResult.granted === false) {
+      alert('Permission to access camera roll is required!');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync();
+    if (!result.canceled) {
+      const newImages = [...images];
+      newImages[index] = result.assets[0].uri;
+      setImages(newImages);
+    }
+  };
+   const handleClearImages = () => {
+    setImages(Array(9).fill(null));
+  };
+
+  const handleListProduct = () => {
+    const hasImages = images.some(image => image !== null);
+    if (!productName.trim() || !productPrice.trim() ||!productDescription.trim()||!sellerLocation.trim()) {
+      Alert.alert('All fileds are mandatory');
+      return;
+  }else if (!hasImages){
+    Alert.alert('Please Select atlease one product image')
+  }
+    const db = getDatabase();
+    const auth = getAuth();
+    const userName = auth.currentUser.displayName
+    const productKey = push(ref(db, 'products')).key;
+    const newProduct = {
+      name: productName,
+      price: productPrice,
+      description: productDescription,
+      images: images.filter(image => image !== null), // Filter out null images
+      uid: auth.currentUser.uid, // Replace with the actual user's UID
+      location: sellerLocation,
+      productId:productKey,
+      timestamp: Date.now(),
+      userName:userName
+    };
+    try {
+      set(ref(db, `products/${productKey}`), newProduct)
+      .then(()=>{
+        setProductName('');
+        setSellerLocation('');
+        setProductDescription('');
+        setProductPrice('');
+        setImages(Array(9).fill(null));
+        Alert.alert('Your product has been listed successfully');
+      })
+      
+    } catch (error) {
+      Alert.alert('Something went wrong. Please try again later')
+    }
+
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: PRIMARY }}>
+    <View style={{ flex: 1, backgroundColor: PRIMARY }}>
       <StatusBar barStyle='light-content' />
       <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        {/* Image Upload Section */}
-        <TouchableOpacity onPress={handleImageUpload} style={styles.imageUploadButton}>
-          <View style={{borderWidth:2, borderRadius:100, padding:25}}>
-            <Image source={require('../assets/profile.png')} style={{ height: 100, width: 100 }} />
+
+        <ScrollView contentContainerStyle={{ justifyContent: 'center' }}>
+          <Text style={{ fontSize: 18, marginVertical: 30, fontWeight: 'bold' }}>Enter your product's details</Text>
+          {/* Product Details Inputs */}
+          <TextInput
+            placeholder="Product Name"
+            style={styles.input}
+            value={productName}
+            onChangeText={setProductName}
+          />
+          <TextInput
+            placeholder="Product Price in PKR"
+            style={styles.input}
+            value={productPrice}
+            onChangeText={setProductPrice}
+            keyboardType='decimal-pad'
+          />
+          <TextInput
+            placeholder="Product Description"
+            style={styles.input}
+            numberOfLines={4}
+            value={productDescription}
+            onChangeText={setProductDescription}
+          />
+          <View style={{flexDirection:'row',  marginVertical:10, justifyContent:'space-between'}}>
+          <Text style={{fontWeight:'600', fontSize:16,}}>Select upto 9 images </Text>
+          <TouchableOpacity onPress={handleClearImages}>
+          <Text style={{color:'blue', textDecorationLine:'underline'}} >Clear</Text>
+          </TouchableOpacity>
           </View>
-          <Text style={{ marginTop: 10, fontSize: 16, fontWeight: '700' }}>Upload Picture</Text>
-        </TouchableOpacity>
-
-        {/* Product Details Inputs */}
-        <TextInput
-          placeholder="Product Name"
-          style={styles.input}
-          value={productName}
-          onChangeText={setProductName}
-        />
-        <TextInput
-          placeholder="Product Price"
-          style={styles.input}
-          value={productPrice}
-          onChangeText={setProductPrice}
-        />
-        <TextInput
-          placeholder="Product Description"
-          style={styles.input}
-          numberOfLines={4}
-          value={productDescription}
-          onChangeText={setProductDescription}
-        />
-        <TextInput
-          placeholder="Seller Location"
-          style={styles.input}
-          value={sellerLocation}
-          onChangeText={setSellerLocation}
-        />
-
-        <TouchableOpacity style={styles.sellBtn}>
-          <Text style={styles.btnText}>
-            List Item
-          </Text>
-        </TouchableOpacity>
+          <View style={styles.imageContainer}>
+            {images.map((image, index) => (
+              <ImageSlot key={index} index={index} onImageSelect={handleImageSelect} image={image} />
+            ))}
+          </View>
+          <TextInput
+            placeholder="Seller Location"
+            style={styles.input}
+            value={sellerLocation}
+            onChangeText={setSellerLocation}
+          />
+          <TouchableOpacity style={styles.sellBtn} onPress={handleListProduct}>
+            <Text style={styles.btnText}>
+              List Item
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+
+    </View>
   );
 };
+
 
 export default Sell;
 
@@ -75,30 +147,37 @@ const styles = StyleSheet.create({
     padding: 16,
     alignItems: 'center',
   },
-  imageUploadButton: {
-    width: '100%',
-    height: 200,
+  imageContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    maxHeight:height
+  },
+  imageSlot: {
+    width: 100,
+    height:100,
+    aspectRatio: 1,
     backgroundColor: 'rgba(255, 255, 255, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
+    borderRadius: 8,
+    borderWidth: 0.5
   },
   uploadedImage: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
+    width: 100,
+    height: 100,
     borderRadius: 8,
   },
   uploadImageText: {
     fontSize: 16,
-    color: 'white',
+    color: 'black',
   },
   input: {
     width: '100%',
     borderRadius: 8,
     paddingHorizontal: 16,
     marginBottom: 16,
-    color: 'white',
     borderWidth: 3,
     paddingVertical: height * 0.02,
     borderColor: PRIMARY
@@ -107,7 +186,8 @@ const styles = StyleSheet.create({
     width: '100%',
     borderRadius: 8,
     backgroundColor: PRIMARY,
-    alignItems: 'center'
+    alignItems: 'center',
+    marginBottom: 30
   },
   btnText: {
     color: 'white',
@@ -115,6 +195,5 @@ const styles = StyleSheet.create({
     paddingVertical: height * 0.02,
     fontWeight: '600',
     fontSize: 18
-
   }
 });

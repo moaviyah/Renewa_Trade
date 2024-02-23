@@ -1,55 +1,65 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View, StatusBar, SafeAreaView, Image, TouchableOpacity, FlatList } from 'react-native';
 import { PRIMARY, SECONDARY } from '../colors';
+import { getDatabase, ref, query, orderByChild, equalTo, onValue } from 'firebase/database';
+import { getAuth } from 'firebase/auth'
+const MyAds = ({ navigation }) => {
+  const [products, setProducts] = useState([]);
+  const auth = getAuth();
+  const userId = auth.currentUser.uid
+  useEffect(() => {
+    // Function to fetch user's products from the database
+    const fetchUserProducts = () => {
+      const db = getDatabase();
+      const productsRef = ref(db, 'products');
+      const userProductsQuery = query(productsRef, orderByChild('uid'), equalTo(userId));
 
-const data = [
-  {
-    id: '1',
-    productImage: require('../assets/product1.png'),
-    name: 'Product 1',
-    price: '$50',
-  },
-  {
-    id: '2',
-    productImage: require('../assets/product2.png'),
-    name: 'Product 2',
-    price: '$80',
-  },
-  {
-    id: '3',
-    productImage: require('../assets/product2.png'),
-    name: 'Product 3',
-    price: '$120',
-  },
-  // Add more data items as needed
-];
+      onValue(userProductsQuery, (snapshot) => {
+        const productsData = [];
+        snapshot.forEach((childSnapshot) => {
+          const product = childSnapshot.val();
+          productsData.push(product);
+        });
+        setProducts(productsData);
+      });
+    };
 
-const MyAds = () => {
-  const renderProductItem = ({ item }) => (
-    <View style={styles.productItem}>
-      <Image source={item.productImage} style={styles.productImage} />
-      <View style={styles.productDetails}>
-        <Text style={styles.productName}>{item.name}</Text>
-        <Text style={styles.productPrice}>{item.price}</Text>
+    // Call the function to fetch user's products
+    fetchUserProducts();
+  }, [userId]);
+
+  const renderProductItem = ({ item }) => { 
+    const firstImageUrl = item.images.length > 0 ? item.images[0] : null;
+
+    return (
+      <View style={styles.productItem}>
+        <Image source={{ uri: firstImageUrl }} style={styles.productImage} />
+        <View style={styles.productDetails}>
+          <Text style={styles.productName}>{item.name}</Text>
+          <Text style={styles.productPrice}>PKR <Text style={{ fontWeight: 'bold' }}>{item.price}</Text></Text>
+        </View>
+        <TouchableOpacity style={styles.editButton}
+          onPress={() => navigation.navigate('EditProduct', {item})}
+        >
+          <Text style={styles.editButtonText}>Edit</Text>
+        </TouchableOpacity>
       </View>
-      <TouchableOpacity style={styles.editButton}>
-        <Text style={styles.editButtonText}>Edit</Text>
-      </TouchableOpacity>
-    </View>
-  );
+    );
+  };
+
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: PRIMARY }}>
       <StatusBar barStyle='light-content' />
       <View style={styles.container}>
-      <View style={{borderBottomWidth:1}}>
-      <Text style={{fontSize:18, margin:20, fontWeight:'700', borderBottomWidth:1}}>Your Products</Text>
-      </View>
+        <View style={{ borderBottomWidth: 1 }}>
+          <Text style={{ fontSize: 18, margin: 20, fontWeight: '700', borderBottomWidth: 1 }}>Your Products</Text>
+        </View>
         <FlatList
-          data={data}
-          keyExtractor={(item) => item.id}
+          data={products}
+          keyExtractor={(item) => item.productId}
           renderItem={renderProductItem}
-          style={{marginTop:10, marginHorizontal:10}}
+          style={{ marginTop: 10, marginHorizontal: 10 }}
         />
       </View>
     </SafeAreaView>
