@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, SafeAreaView, StatusBar, TouchableOpacity, Image, FlatList, Dimensions } from 'react-native';
+import { StyleSheet, Text, View, SafeAreaView, StatusBar, TouchableOpacity, Image, FlatList, Dimensions, TextInput } from 'react-native';
 import { PRIMARY, SECONDARY } from '../colors';
 import { getDatabase, ref, onValue } from 'firebase/database';
 
@@ -9,7 +9,7 @@ const height = Dimensions.get('window').height;
 const db = getDatabase();
 const AllProducts = ({ navigation }) => {
   const [products, setProducts] = useState([]);
-
+  const [searchQuery, setSearchQuery] = useState('');
   useEffect(() => {
     const productsRef = ref(db, 'products');
     const unsubscribe = onValue(productsRef, (snapshot) => {
@@ -28,6 +28,10 @@ const AllProducts = ({ navigation }) => {
     };
   }, []);
 
+  const filteredProducts = products.filter(product =>
+    product.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   const renderProduct = ({ item }) => {
     return (
       <TouchableOpacity id={item.productId} style={{ marginHorizontal: 5, marginVertical: 10 }} onPress={() => navigation.navigate('ProductDetails', { item })}>
@@ -45,6 +49,7 @@ const AllProducts = ({ navigation }) => {
     <SafeAreaView style={{ flex: 1, backgroundColor: PRIMARY }}>
       <StatusBar barStyle='light-content' />
       <View style={styles.container}>
+        
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <Image source={require('../assets/back.png')} style={{ height: 25, width: 25 }} />
@@ -52,8 +57,17 @@ const AllProducts = ({ navigation }) => {
           <Text style={styles.headerTitle}>All Products</Text>
           <View style={{ width: 25 }} />
         </View>
+        <View style={styles.searchBar}>
+          <Image source={require('../assets/search.png')} style={{ height: 20, width: 20 }} />
+          <TextInput 
+          style={{ color: 'gray', marginLeft: 10 }} 
+          placeholder='Find wood, plastic and more...' 
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          />
+        </View>
         <FlatList
-          data={products}
+          data={filteredProducts}
           renderItem={renderProduct}
           keyExtractor={(item) => item.id}
           numColumns={2}
@@ -76,13 +90,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: PRIMARY,
   },
+  searchBar: {
+    paddingVertical:12,
+    borderWidth: 2,
+    borderRadius: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    marginVertical:10
+},
   productList: {
     paddingBottom: 20,
   },

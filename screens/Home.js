@@ -2,12 +2,15 @@ import { StyleSheet, Text, View, StatusBar, SafeAreaView, Image, Dimensions, Fla
 import React, { useState, useEffect } from 'react'
 import { PRIMARY, SECONDARY } from '../colors'
 import { getDatabase, ref, onValue } from 'firebase/database';
+import * as Location from 'expo-location';
 
 const width = Dimensions.get('window').width;
 const height = Dimensions.get('window').height;
 const Home = ({ navigation }) => {
     const [products, setProducts] = useState([]);
-    const [loading, setLoading] = useState(true)
+    const [loading, setLoading] = useState(true);
+    const [location, setLocation] = useState('');
+    const [locationAddress, setLocationAddress] = useState('');
     useEffect(() => {
         const db = getDatabase();
         const productsRef = ref(db, 'products');
@@ -19,6 +22,54 @@ const Home = ({ navigation }) => {
             setLoading(false)
         });
     }, []);
+
+    useEffect(() => {
+        // Request permission to access location
+        (async () => {
+          let { status } = await Location.requestForegroundPermissionsAsync();
+          if (status !== 'granted') {
+            console.log('Permission to access location was denied');
+            return;
+          }
+    
+          // Get live location updates
+          let locationSubscription = await Location.watchPositionAsync(
+            {
+              accuracy: 20,
+              timeInterval: 1000, // Update every 1 second
+            },
+            newPosition => {
+              setLocation(newPosition.coords);
+              (async () => {
+                try {
+                  const addressData = await Location.reverseGeocodeAsync({
+                    latitude: newPosition.coords.latitude,
+                    longitude: newPosition.coords.longitude,
+                  });
+                  if (addressData && addressData.length > 0) {
+                    const firstAddress = addressData[0];
+                    if(firstAddress.city === null){
+                        const formattedAddress = `${firstAddress.name},  ${firstAddress.country}`;
+                        setLocationAddress(formattedAddress);
+                    }else{
+                        const formattedAddress = `${firstAddress.city},${firstAddress.name},  ${firstAddress.country}`;
+                        setLocationAddress(formattedAddress);
+                    }
+                  }
+                } catch (error) {
+                  console.error('Error getting address:', error);
+                }
+              })();
+            }
+          );
+    
+          return () => {
+            if (locationSubscription) {
+              locationSubscription.remove();
+            }
+          };
+        })();
+      }, []);
 
     const categories = [
         {
@@ -77,15 +128,11 @@ const Home = ({ navigation }) => {
                             <ScrollView style={styles.container}>
                                 <View style={styles.topContainer}>
                                     <Text style={{ color: 'white' }}>Hello</Text>
-                                    <View style={{ flexDirection: 'row' }}>
+                                    <TouchableOpacity style={{ flexDirection: 'row' }}>
                                         <Image source={require('../assets/location.png')} style={{ height: 20, width: 20 }} />
-                                        <Text>Islamabad, Pakistan</Text>
-                                    </View>
+                                        <Text>{locationAddress}</Text>
+                                    </TouchableOpacity>
 
-                                </View>
-                                <View style={styles.searchBar}>
-                                    <Image source={require('../assets/search.png')} style={{ height: 20, width: 20 }} />
-                                    <Text style={{ color: 'gray', marginLeft: 10 }}>Find Wood, Plastic and more...</Text>
                                 </View>
                                 <View style={styles.secondContainer}>
                                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 10, paddingVertical: 20 }}>
@@ -159,7 +206,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         paddingHorizontal: 10,
         justifyContent: 'space-between',
-        paddingVertical: 10
+        paddingTop: 10
     },
     searchBar: {
         height: height * 0.07,

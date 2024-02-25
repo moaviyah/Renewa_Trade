@@ -11,6 +11,8 @@ import EditProduct from './screens/EditProduct';
 import AllProducts from './screens/AllProducts';
 import ProductDetails from './screens/ProductDetails';
 import Messages from './screens/Messages';
+import EditProfile from './screens/EditProfile';
+import Support from './screens/Support';
 
 const App = () => {
   const [loading, setLoading] = useState(true);
@@ -40,6 +42,8 @@ const App = () => {
             <Stack.Screen name='AllProducts' component={AllProducts}/>
             <Stack.Screen name='ProductDetails' component={ProductDetails}/>
             <Stack.Screen name='Messages' component={Messages}/>
+            <Stack.Screen name='EditProfile' component={EditProfile}/>
+            <Stack.Screen name='Support' component={Support}/>
           </>
         ) : (
           <>

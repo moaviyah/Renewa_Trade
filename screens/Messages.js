@@ -22,7 +22,7 @@ const Messages = ({ navigation, route }) => {
         onValue(messagesRef, (snapshot) => {
             const data = snapshot.val();
             if (data) {
-                setMessages(Object.values(data))
+                setMessages(Object.values(data).reverse())
             }
         })
 
@@ -32,12 +32,21 @@ const Messages = ({ navigation, route }) => {
         if (!messageText.trim()) return;
         const db = getDatabase();
         const newMessageRef = (ref(db, `messages/${currentUser}/${receiverId}`));
+        const otherUsersRef = (ref(db, `messages/${receiverId}/${currentUser}`));
         push(newMessageRef, {
             senderId: currentUser,
             receiverId: receiverId,
             message: messageText.trim(),
             timestamp: new Date().toISOString(),
             name:userName
+        }).then(()=>{
+            push(otherUsersRef, {
+                senderId: currentUser,
+                receiverId: receiverId,
+                message: messageText.trim(),
+                timestamp: new Date().toISOString(),
+                name:userName 
+            })
         });
         setMessageText('');
     };
@@ -55,7 +64,7 @@ const Messages = ({ navigation, route }) => {
         >
             <StatusBar barStyle='light-content' />
             <View style={styles.container}>
-                <View style={{ flexDirection: 'row' }}>
+                <View style={{ flexDirection: 'row', borderBottomWidth:1, paddingBottom:15, paddingHorizontal:20 }}>
                     <TouchableOpacity onPress={() => navigation.goBack()}>
                         <Image source={require('../assets/back.png')} style={{ height: 25, width: 25 }} />
                     </TouchableOpacity>
@@ -63,13 +72,15 @@ const Messages = ({ navigation, route }) => {
                         {item.userName}
                     </Text>
                 </View>
-                <ScrollView style={{ flex: 1 }}>
+                {/* <ScrollView style={{ flex: 1 }}> */}
                     <FlatList
                         data={messages}
                         renderItem={renderMessage}
                         keyExtractor={(item, index) => index.toString()}
+                        inverted
+                        contentContainerStyle={{paddingHorizontal:10}}
                     />
-                </ScrollView>
+                {/* </ScrollView> */}
                 <View style={styles.inputContainer}>
                     <TextInput
                         style={styles.input}
@@ -92,7 +103,7 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: SECONDARY,
-        padding: 20,
+        paddingVertical:20
     },
     messageContainer: {
         borderWidth: 1,
@@ -100,6 +111,7 @@ const styles = StyleSheet.create({
         padding: 10,
         marginVertical: 5,
         borderRadius: 10,
+        paddingHorizontal:20
     },
     sentMessage: {
         alignSelf: 'flex-end',
@@ -113,6 +125,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         marginTop: 20,
+        paddingHorizontal:10
     },
     input: {
         flex: 1,
@@ -125,7 +138,7 @@ const styles = StyleSheet.create({
     },
     sendButton: {
         backgroundColor: PRIMARY,
-        paddingVertical: 10,
+        paddingVertical: 20,
         paddingHorizontal: 20,
         borderRadius: 5,
     },

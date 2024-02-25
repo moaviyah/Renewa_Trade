@@ -7,7 +7,7 @@ import { getDatabase, ref, get, child } from 'firebase/database';
 const width = Dimensions.get('window').width;
 const height = Dimensions.get('window').height;
 
-const Account = () => {
+const Account = ({navigation}) => {
   const auth = getAuth();
   const db = getDatabase();
   const [userData, setUserData] = useState(null);
@@ -54,7 +54,7 @@ const Account = () => {
         </View>
 
         {/* Button for View and Edit Profile */}
-        <TouchableOpacity style={styles.editProfileButton}>
+        <TouchableOpacity style={styles.editProfileButton} onPress={()=>navigation.navigate('EditProfile', {userData})}>
           <Image source={require('../assets/edit.png')} style={{ height: 35, width: 35, marginLeft: width * 0.05 }} />
           <Text style={styles.editProfileButtonText}>View and Edit Profile</Text>
         </TouchableOpacity>
@@ -62,7 +62,7 @@ const Account = () => {
         {/* Tabs for Help & Support, Privacy Policy, and Log Out */}
         <View style={styles.tabsContainer}>
           {/* Help & Support */}
-          <TouchableOpacity style={styles.tab}>
+          <TouchableOpacity style={styles.tab} onPress={()=>navigation.navigate('Support')}>
             <Image source={require('../assets/support.png')} style={{ height: 35, width: 35, marginLeft: width * 0.05 }} />
             <Text style={styles.tabText}>Help & Support</Text>
           </TouchableOpacity>

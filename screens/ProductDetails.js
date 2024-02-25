@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, SafeAreaView, StatusBar, TouchableOpacity, Image, ScrollView, FlatList, Dimensions } from 'react-native';
+import { StyleSheet, Text, View, SafeAreaView, StatusBar, TouchableOpacity, Image, ScrollView, FlatList, Dimensions, Linking } from 'react-native';
 import { PRIMARY, SECONDARY } from '../colors';
 import { getDatabase, ref, onValue } from 'firebase/database';
 
@@ -32,6 +32,10 @@ const ProductDetails = ({ navigation, route }) => {
     <Image source={{ uri: item }} style={styles.productImage} />
   );
 
+  const handleDialNumber =(number)=>{
+    Linking.openURL(`tel:${number}`)
+  }
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: PRIMARY }}>
       <StatusBar barStyle='light-content' />
@@ -52,11 +56,11 @@ const ProductDetails = ({ navigation, route }) => {
           />
           <View style={styles.productInfo}>
             <Text style={styles.productName}>{item.name}</Text>
-            <Text style={styles.productPrice}>Price: ${item.price}</Text>
+              <Text style={{fontSize:16}}>Price: ${item.price}</Text>
             {user && (
             <View style={styles.userDetails}>
               {user.profilePicture ? (
-                <Image source={{ uri: user.profilePicture }} style={styles.profilePicture} />
+                <Image source={{ uri: user.profileImage }} style={styles.profilePicture} />
               ) : (
                 <Image source={require('../assets/profile.png')} style={styles.profilePicture} />
               )}
@@ -69,14 +73,20 @@ const ProductDetails = ({ navigation, route }) => {
                 <TouchableOpacity style={styles.chatButton} onPress={()=>navigation.navigate('Messages', {item})}>
                   <Text style={styles.buttonText}>Chat</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.callButton}>
+                <TouchableOpacity style={styles.callButton} onPress={()=>handleDialNumber(user.phone)}>
                   <Text style={styles.buttonText}>Call</Text>
                 </TouchableOpacity>
                 </View>
               </View>
             </View>
           )}
-            <Text style={{marginTop:10, fontWeight:'bold'}}>Description</Text>
+          <View style={{flexDirection:'row', justifyContent:'space-between', alignItems:'center'}}>
+            <Text style={{ fontWeight:'bold'}}>Description</Text>
+            <Text style={{fontWeight:'bold'}}>
+            <Image source={require('../assets/location.png')} style={{ height: 11, width: 11 }} />
+              : {item.location}
+            </Text>
+          </View>
             <Text style={styles.productDescription}>{item.description}</Text>
           </View>
           
@@ -122,7 +132,6 @@ const styles = StyleSheet.create({
   },
   productPrice: {
     fontSize: 16,
-    marginBottom: 10,
   },
   productDescription: {
     fontSize: 16,

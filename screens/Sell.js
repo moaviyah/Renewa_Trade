@@ -3,7 +3,8 @@ import { StyleSheet, Text, View, StatusBar,Alert, SafeAreaView, Image, Touchable
 import { PRIMARY, SECONDARY } from '../colors';
 import * as ImagePicker from 'expo-image-picker';
 import { getDatabase, ref, push, set } from 'firebase/database';
-import {getAuth} from 'firebase/auth'
+import {getAuth} from 'firebase/auth';
+import axios from 'axios';
 const width = Dimensions.get('window').width;
 const height = Dimensions.get('window').height;
 
@@ -21,7 +22,10 @@ const Sell = () => {
   const [productDescription, setProductDescription] = useState('');
   const [sellerLocation, setSellerLocation] = useState('');
   const [images, setImages] = useState(Array(9).fill(null));
-
+  const db = getDatabase();
+  const auth = getAuth();
+  const userName = auth.currentUser.displayName
+  
   const handleImageSelect = async (index) => {
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (permissionResult.granted === false) {
@@ -40,6 +44,54 @@ const Sell = () => {
     setImages(Array(9).fill(null));
   };
 
+
+
+  const classifyImage = async (imageUri) => {
+    console.log('image url',imageUri)
+    const formData = new FormData();
+    formData.append('image', {
+        uri: imageUri,
+        type: 'image/jpeg',
+        name: 'image.jpg',
+    });
+  
+    try {
+        const response = await axios.post('https://552e-110-39-14-50.ngrok-free.app/classify-image', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        });
+        const data = response.data;
+        console.log('Predictions:', data.predictions);
+  
+        const productKey = push(ref(db, 'products')).key;
+        const newProduct = {
+          name: productName,
+          price: productPrice,
+          description: productDescription,
+          images: images.filter(image => image !== null), // Filter out null images
+          uid: auth.currentUser.uid, // Replace with the actual user's UID
+          location: sellerLocation,
+          productId:productKey,
+          timestamp: Date.now(),
+          userName:userName
+        };
+        // set(ref(db, `products/${productKey}`), newProduct)
+        // .then(()=>{
+        //   setProductName('');
+        //   setSellerLocation('');
+        //   setProductDescription('');
+        //   setProductPrice('');
+        //   setImages(Array(9).fill(null));
+        //   Alert.alert('Your product has been listed successfully');
+        // })
+    } catch (error) {
+        Alert.alert('Something went wrong', error.message)
+        return
+    }
+  };
+  
+
   const handleListProduct = () => {
     const hasImages = images.some(image => image !== null);
     if (!productName.trim() || !productPrice.trim() ||!productDescription.trim()||!sellerLocation.trim()) {
@@ -48,36 +100,7 @@ const Sell = () => {
   }else if (!hasImages){
     Alert.alert('Please Select atlease one product image')
   }
-    const db = getDatabase();
-    const auth = getAuth();
-    const userName = auth.currentUser.displayName
-    const productKey = push(ref(db, 'products')).key;
-    const newProduct = {
-      name: productName,
-      price: productPrice,
-      description: productDescription,
-      images: images.filter(image => image !== null), // Filter out null images
-      uid: auth.currentUser.uid, // Replace with the actual user's UID
-      location: sellerLocation,
-      productId:productKey,
-      timestamp: Date.now(),
-      userName:userName
-    };
-    try {
-      set(ref(db, `products/${productKey}`), newProduct)
-      .then(()=>{
-        setProductName('');
-        setSellerLocation('');
-        setProductDescription('');
-        setProductPrice('');
-        setImages(Array(9).fill(null));
-        Alert.alert('Your product has been listed successfully');
-      })
-      
-    } catch (error) {
-      Alert.alert('Something went wrong. Please try again later')
-    }
-
+  classifyImage(images[0])
   };
 
   return (
@@ -108,6 +131,12 @@ const Sell = () => {
             value={productDescription}
             onChangeText={setProductDescription}
           />
+          <TextInput
+            placeholder="Enter Your city"
+            style={styles.input}
+            value={sellerLocation}
+            onChangeText={setSellerLocation}
+          />
           <View style={{flexDirection:'row',  marginVertical:10, justifyContent:'space-between'}}>
           <Text style={{fontWeight:'600', fontSize:16,}}>Select upto 9 images </Text>
           <TouchableOpacity onPress={handleClearImages}>
@@ -119,12 +148,7 @@ const Sell = () => {
               <ImageSlot key={index} index={index} onImageSelect={handleImageSelect} image={image} />
             ))}
           </View>
-          <TextInput
-            placeholder="Seller Location"
-            style={styles.input}
-            value={sellerLocation}
-            onChangeText={setSellerLocation}
-          />
+          
           <TouchableOpacity style={styles.sellBtn} onPress={handleListProduct}>
             <Text style={styles.btnText}>
               List Item

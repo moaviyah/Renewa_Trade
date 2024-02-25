@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, FlatList, TouchableOpacity, SafeAreaView, Image } from 'react-native';
+import { StyleSheet, Text, View, FlatList, TouchableOpacity, SafeAreaView, Image, Linking } from 'react-native';
 import { getDatabase, ref, onValue } from 'firebase/database';
 import { getAuth } from 'firebase/auth';
 
@@ -55,7 +55,7 @@ const Chat = ({navigation}) => {
   }, []);
 
   const renderChatItem = ({ item }) => (
-    <TouchableOpacity style={styles.chatItem} onPress={()=>navigation.navigate('Messages', {item})}>
+    <TouchableOpacity style={styles.chatItem} onPress={()=>navigation.navigate('Messages', {item})} key={item.otherUserId}>
       <Image source={item.profileImage ? { uri: item.profileImage } : require('../assets/profile.png')} style={styles.profileImage}/>
       <View style={styles.userInfo}>
         <Text style={styles.otherUserId}>{item.userName}</Text>
@@ -66,11 +66,12 @@ const Chat = ({navigation}) => {
 
   return (
     <View style={styles.container} >
-      <Text style={{ fontWeight: 'bold', fontSize: 18 }}> All Chats</Text>
+      <Text style={{ fontWeight: 'bold', fontSize: 18, marginBottom:20}}> All Chats</Text>
       <FlatList
         data={chats}
         renderItem={renderChatItem}
         keyExtractor={(item) => item.otherUserId}
+        key={(item)=> item.otherUserId} 
       />
     </View>
   );
@@ -90,7 +91,9 @@ const styles = StyleSheet.create({
     padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#ccc',
-    alignItems:'center'
+    alignItems:'center',
+    borderTopWidth:1,
+    borderTopColor:'#ccc'
   },
   userInfo: {
    
